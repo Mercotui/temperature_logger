@@ -2,7 +2,9 @@ google.charts.load('current', {'packages':['line']});
 google.charts.setOnLoadCallback(load_data);
 
 function load_data(){
-    var data_file = "TODO: NEED A LINK HERE";
+    setTimeout(load_data, 10000);//300000); //5 minutes
+
+    var data_file = window.location.origin + "/data.json";
     var http_request = new XMLHttpRequest();
     try{
         // Opera 8.0+, Firefox, Chrome, Safari
@@ -64,6 +66,4 @@ function draw_chart(data_array) {
     var chart = new google.charts.Line(document.getElementById('chart_div'));
 
     chart.draw(data, options);
-
-    setTimeout(load_data, 300000); //5 minutes
 }
