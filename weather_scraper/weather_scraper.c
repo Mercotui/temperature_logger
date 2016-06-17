@@ -17,8 +17,10 @@ static char* json_temparature_node;
 
 //-----static functions
 static void ev_handler (struct mg_connection* nc, int ev, void* ev_data);
+static int parse_resp (const char* body, const size_t len);
+static void insert_temp_db (const int temperature);
 static int get_conf (void);
-static int parse_conf (char* uri_line, char* node_line);
+static int parse_conf (const char* uri_line, const char* node_line);
 static void* http_req_thread (void*);
 
 //-----function defenitions
@@ -34,9 +36,29 @@ static void ev_handler (struct mg_connection* nc, int ev, void* ev_data) {
         case MG_EV_HTTP_REPLY:
             fwrite (hm->body.p, 1, hm->body.len, stdout);
             putchar ('\n');
+            int temperature = parse_resp (hm->body.p, hm->body.len);
+            insert_temp_db (temperature);
             break;
         default: break;
     }
+}
+
+static int parse_resp (const char* body, const size_t len) {
+    struct json_token *arr, *arr2, *tok;
+    arr = parse_json2 (body, len);
+
+    tok  = find_json_token (arr, "\"current\"");
+    arr2 = parse_json2 (tok->ptr, tok->len);
+    tok  = find_json_token (arr2, "\"temp_c\"");
+
+    fwrite (tok->ptr, 1, tok->len, stdout);
+
+    return 4;
+}
+
+static void insert_temp_db (const int temperature) {
+    ; // sqmagicl here
+    ; // insert temperature in celcius - time in minutes
 }
 
 static int get_conf (void) {
@@ -71,7 +93,7 @@ static int get_conf (void) {
     return status;
 }
 
-static int parse_conf (char* uri_line, char* node_line) {
+static int parse_conf (const char* uri_line, const char* node_line) {
     int status = 0;
 
     if (strncmp (uri_line, CONF_URI_HEADER, strlen (CONF_URI_HEADER)) == 0) {
