@@ -17,16 +17,28 @@ static char* http_req_uri;
 static char* json_temparature_node;
 
 //-----static functions
-static void ev_handler (struct mg_connection* nc, int ev, void* ev_data);
-static double parse_resp (const char* body, const size_t len);
-static void insert_temp_db (const int temperature);
-static int get_conf (void);
-static int parse_conf (const char* uri_line, const char* node_line);
-static void strtrim_end (char* str);
-static void* http_req_thread (void*);
+static void* http_request_thread (void*);
+static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data);
+static double http_parse_resp (const char* body, const size_t len);
+static void db_insert_temperature (const double temperature);
+static int config_get (void);
+static int config_parse (const char* uri_line, const char* node_line);
+static void config_trim_line (char* str);
 
 //-----function defenitions
-static void ev_handler (struct mg_connection* nc, int ev, void* ev_data) {
+// http functions
+static void* http_request_thread (void* data) {
+    struct mg_mgr* mgr = (struct mg_mgr*)data;
+
+    while (1) {
+        mg_connect_http (mgr, http_event_handler, http_req_uri, NULL, NULL);
+        sleep (S_POLL_TIME);
+    }
+
+    return NULL;
+}
+
+static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data) {
     struct http_message* hm = (struct http_message*)ev_data;
 
     switch (ev) {
@@ -38,14 +50,14 @@ static void ev_handler (struct mg_connection* nc, int ev, void* ev_data) {
         case MG_EV_HTTP_REPLY:
             fwrite (hm->body.p, 1, hm->body.len, stdout);
             putchar ('\n');
-            int temperature = parse_resp (hm->body.p, hm->body.len);
-            insert_temp_db (temperature);
+            double temperature = http_parse_resp (hm->body.p, hm->body.len);
+            db_insert_temperature (temperature);
             break;
         default: break;
     }
 }
 
-static double parse_resp (const char* body, const size_t len) {
+static double http_parse_resp (const char* body, const size_t len) {
     struct json_token *arr, *arr2, *tok;
 
     arr  = parse_json2 (body, len);
@@ -65,12 +77,14 @@ static double parse_resp (const char* body, const size_t len) {
     return ret;
 }
 
-static void insert_temp_db (const int temperature) {
+// database functions
+static void db_insert_temperature (const double temperature) {
     ; // sqmagicl here
     ; // insert temperature in celcius - time in minutes
 }
 
-static int get_conf (void) {
+// config functions
+static int config_get (void) {
     int status = -1;
     FILE* conf_file;
     char *uri_line = NULL, *node_line = NULL;
@@ -86,7 +100,7 @@ static int get_conf (void) {
         } else if (read_size2 <= 0) {
             printf ("No second line in %s\n", CONF_PATH);
         } else {
-            status = parse_conf (uri_line, node_line);
+            status = config_parse (uri_line, node_line);
         }
         fclose (conf_file);
     } else {
@@ -99,12 +113,12 @@ static int get_conf (void) {
     return status;
 }
 
-static int parse_conf (const char* uri_line, const char* node_line) {
+static int config_parse (const char* uri_line, const char* node_line) {
     int status = 0;
 
     if (strncmp (uri_line, CONF_URI_HEADER, strlen (CONF_URI_HEADER)) == 0) {
         http_req_uri = strdup (uri_line + strlen (CONF_URI_HEADER));
-        strtrim_end (http_req_uri);
+        config_trim_line (http_req_uri);
     } else {
         status = -1;
         printf ("%s does not follow format %s=http://example.com/api/weather\n",
@@ -113,7 +127,7 @@ static int parse_conf (const char* uri_line, const char* node_line) {
 
     if (strncmp (node_line, CONF_JSONPATH_HEADER, strlen (CONF_JSONPATH_HEADER)) == 0) {
         json_temparature_node = strdup (node_line + strlen (CONF_JSONPATH_HEADER));
-        strtrim_end (json_temparature_node);
+        config_trim_line (json_temparature_node);
     } else {
         status = -1;
         printf ("%s does not follow format %s=example.weather.current.temp\n",
@@ -123,7 +137,7 @@ static int parse_conf (const char* uri_line, const char* node_line) {
     return status;
 }
 
-static void strtrim_end (char* str) {
+static void config_trim_line (char* str) {
     char* end;
     end = str + strlen (str) - 1;
     while (end > str && isspace (*end)) end--;
@@ -132,26 +146,16 @@ static void strtrim_end (char* str) {
     *(end + 1) = '\0';
 }
 
-static void* http_req_thread (void* data) {
-    struct mg_mgr* mgr = (struct mg_mgr*)data;
-
-    while (1) {
-        mg_connect_http (mgr, ev_handler, http_req_uri, NULL, NULL);
-        sleep (S_POLL_TIME);
-    }
-
-    return NULL;
-}
-
+// main function
 int main (int argc, char* argv[]) {
     int status = 0;
     struct mg_mgr mgr;
     mg_mgr_init (&mgr, NULL);
 
-    status = get_conf ();
+    status = config_get ();
     if (status != -1) {
         pthread_t req_thread;
-        pthread_create (&req_thread, NULL, http_req_thread, &mgr);
+        pthread_create (&req_thread, NULL, http_request_thread, &mgr);
 
         while (1) {
             mg_mgr_poll (&mgr, 1000);
