@@ -1,6 +1,7 @@
 //-----includes
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "../mongoose/mongoose.h"
@@ -17,10 +18,11 @@ static char* json_temparature_node;
 
 //-----static functions
 static void ev_handler (struct mg_connection* nc, int ev, void* ev_data);
-static int parse_resp (const char* body, const size_t len);
+static double parse_resp (const char* body, const size_t len);
 static void insert_temp_db (const int temperature);
 static int get_conf (void);
 static int parse_conf (const char* uri_line, const char* node_line);
+static void strtrim_end (char* str);
 static void* http_req_thread (void*);
 
 //-----function defenitions
@@ -43,17 +45,24 @@ static void ev_handler (struct mg_connection* nc, int ev, void* ev_data) {
     }
 }
 
-static int parse_resp (const char* body, const size_t len) {
+static double parse_resp (const char* body, const size_t len) {
     struct json_token *arr, *arr2, *tok;
-    arr = parse_json2 (body, len);
 
-    tok  = find_json_token (arr, "\"current\"");
+    arr  = parse_json2 (body, len);
+    tok  = find_json_token (arr, "current");
     arr2 = parse_json2 (tok->ptr, tok->len);
-    tok  = find_json_token (arr2, "\"temp_c\"");
+    tok  = find_json_token (arr2, "temp_c");
 
-    fwrite (tok->ptr, 1, tok->len, stdout);
+    double ret;
+    char* endptr;
+    ret = strtod (tok->ptr, &endptr);
 
-    return 4;
+    if (endptr == tok->ptr) {
+        printf ("Could not convert \"%s\" value was \"%.*s\"\n",
+        json_temparature_node, tok->len, tok->ptr);
+    }
+
+    return ret;
 }
 
 static void insert_temp_db (const int temperature) {
@@ -66,21 +75,18 @@ static int get_conf (void) {
     FILE* conf_file;
     char *uri_line = NULL, *node_line = NULL;
     size_t read_buff_size = 0;
-    ssize_t read_size;
+    ssize_t read_size1, read_size2;
 
     conf_file = fopen (CONF_PATH, "r");
     if (conf_file != NULL) {
-        read_size = getline (&uri_line, &read_buff_size, conf_file);
-        if (read_size > 0) {
-            read_buff_size = 0;
-            read_size      = getline (&node_line, &read_buff_size, conf_file);
-            if (read_size > 0) {
-                status = parse_conf (uri_line, node_line);
-            } else {
-                printf ("No second line in %s\n", CONF_PATH);
-            }
-        } else {
+        read_size1 = getline (&uri_line, &read_buff_size, conf_file);
+        read_size2 = getline (&node_line, &read_buff_size, conf_file);
+        if (read_size1 <= 0) {
             printf ("No contents in %s\n", CONF_PATH);
+        } else if (read_size2 <= 0) {
+            printf ("No second line in %s\n", CONF_PATH);
+        } else {
+            status = parse_conf (uri_line, node_line);
         }
         fclose (conf_file);
     } else {
@@ -98,13 +104,16 @@ static int parse_conf (const char* uri_line, const char* node_line) {
 
     if (strncmp (uri_line, CONF_URI_HEADER, strlen (CONF_URI_HEADER)) == 0) {
         http_req_uri = strdup (uri_line + strlen (CONF_URI_HEADER));
+        strtrim_end (http_req_uri);
     } else {
         status = -1;
         printf ("%s does not follow format %s=http://example.com/api/weather\n",
         CONF_URI_HEADER, CONF_URI_HEADER);
     }
+
     if (strncmp (node_line, CONF_JSONPATH_HEADER, strlen (CONF_JSONPATH_HEADER)) == 0) {
         json_temparature_node = strdup (node_line + strlen (CONF_JSONPATH_HEADER));
+        strtrim_end (json_temparature_node);
     } else {
         status = -1;
         printf ("%s does not follow format %s=example.weather.current.temp\n",
@@ -112,6 +121,15 @@ static int parse_conf (const char* uri_line, const char* node_line) {
     }
 
     return status;
+}
+
+static void strtrim_end (char* str) {
+    char* end;
+    end = str + strlen (str) - 1;
+    while (end > str && isspace (*end)) end--;
+
+    // Write new null terminator
+    *(end + 1) = '\0';
 }
 
 static void* http_req_thread (void* data) {
