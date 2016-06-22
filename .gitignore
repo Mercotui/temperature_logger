@@ -1,4 +1,3 @@
-
 # Created by https://www.gitignore.io/api/c,cmake
 
 ### C ###
@@ -48,5 +47,6 @@ CTestTestfile.cmake
 
 
 ### custom ###
+.db
 weather_scraper/weather_scraper.conf
 /build/

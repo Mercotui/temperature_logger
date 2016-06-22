@@ -1,5 +1,6 @@
 //-----includes
 #include <pthread.h>
+#include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +9,7 @@
 
 //-----defines
 #define S_POLL_TIME 300 // 5 minutes
+#define SQLCMD_FORMAT "INSERT INTO Weather VALUES(CURRENT_TIMESTAMP, %s);"
 #define CONF_PATH "./weather_scraper/weather_scraper.conf"
 #define CONF_URI_HEADER "weather uri="
 #define CONF_JSONPATH_HEADER "termperature json node="
@@ -19,8 +21,8 @@ static char* json_temparature_node;
 //-----static functions
 static void* http_request_thread (void*);
 static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data);
-static double http_parse_resp (const char* body, const size_t len);
-static void db_insert_temperature (const double temperature);
+static char* http_parse_resp (const char* body, const size_t len);
+static void db_insert_temperature (char* temperature);
 static int config_get (void);
 static int config_parse (const char* uri_line, const char* node_line);
 static void config_trim_line (char* str);
@@ -42,22 +44,26 @@ static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data)
     struct http_message* hm = (struct http_message*)ev_data;
 
     switch (ev) {
-        case MG_EV_CONNECT:
+        case MG_EV_CONNECT: {
             if (*(int*)ev_data != 0) {
-                fprintf (stderr, "connect() failed: %s\n", strerror (*(int*)ev_data));
+                printf ("connect() failed: %s\n", strerror (*(int*)ev_data));
             }
             break;
-        case MG_EV_HTTP_REPLY:
-            fwrite (hm->body.p, 1, hm->body.len, stdout);
-            putchar ('\n');
-            double temperature = http_parse_resp (hm->body.p, hm->body.len);
-            db_insert_temperature (temperature);
+        }
+        case MG_EV_HTTP_REPLY: {
+            char* temperature = http_parse_resp (hm->body.p, hm->body.len);
+            if (temperature != NULL) {
+                db_insert_temperature (temperature);
+                free (temperature);
+            }
             break;
+        }
         default: break;
     }
 }
 
-static double http_parse_resp (const char* body, const size_t len) {
+static char* http_parse_resp (const char* body, const size_t len) {
+    char* ret = NULL;
     struct json_token *arr, *arr2, *tok;
 
     arr  = parse_json2 (body, len);
@@ -65,22 +71,52 @@ static double http_parse_resp (const char* body, const size_t len) {
     arr2 = parse_json2 (tok->ptr, tok->len);
     tok  = find_json_token (arr2, "temp_c");
 
-    double ret;
     char* endptr;
-    ret = strtod (tok->ptr, &endptr);
-
+    strtod (tok->ptr, &endptr);
     if (endptr == tok->ptr) {
-        printf ("Could not convert \"%s\" value was \"%.*s\"\n",
+        printf ("Given temperature node \"%s\" not valid, value was \"%.*s\"\n",
         json_temparature_node, tok->len, tok->ptr);
+    } else {
+        ret = strndup (tok->ptr, tok->len);
     }
 
     return ret;
 }
 
 // database functions
-static void db_insert_temperature (const double temperature) {
-    ; // sqmagicl here
-    ; // insert temperature in celcius - time in minutes
+// CREATE TABLE Weather (Time INT?, Temperature DOUBLE);
+static void db_insert_temperature (char* temperature) {
+    char* err_msg = NULL;
+    int status;
+    sqlite3* db;
+
+    status = sqlite3_open ("temperatures.db", &db);
+    if (status != SQLITE_OK) {
+        fprintf (stderr, "Cannot open database: %s\n", sqlite3_errmsg (db));
+    } else {
+        status = sqlite3_exec (db, "CREATE TABLE IF NOT EXISTS Weather "
+                                   "(Timestamp DATETIME, Temperature DOUBLE);",
+        NULL, NULL, &err_msg);
+        if (status != SQLITE_OK) {
+            printf ("SQL error: %s\n", err_msg);
+            sqlite3_free (err_msg);
+        } else {
+            size_t sqlcmd_len = strlen (SQLCMD_FORMAT) + strlen (temperature);
+            char* sqlcmd      = malloc (sqlcmd_len);
+
+            sprintf (sqlcmd, SQLCMD_FORMAT, temperature);
+            status = sqlite3_exec (db, sqlcmd, NULL, NULL, &err_msg);
+            if (status == SQLITE_OK) {
+                printf ("Inserted %s\n", temperature);
+            } else {
+                printf ("SQL error: %s\n", err_msg);
+                sqlite3_free (err_msg);
+            }
+        }
+    }
+
+    sqlite3_close (db);
+    return;
 }
 
 // config functions
@@ -142,7 +178,6 @@ static void config_trim_line (char* str) {
     end = str + strlen (str) - 1;
     while (end > str && isspace (*end)) end--;
 
-    // Write new null terminator
     *(end + 1) = '\0';
 }
 
