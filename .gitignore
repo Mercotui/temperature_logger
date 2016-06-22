@@ -47,6 +47,6 @@ CTestTestfile.cmake
 
 
 ### custom ###
-temperature.db
+temperatures.db
 weather_scraper/weather_scraper.conf
 /build/
