@@ -2,10 +2,10 @@
 #include <sqlite3.h>
 #include <string.h>
 
-
 #include "../mongoose/mongoose.h"
 
 //-----defines
+#define DEFAULT_PORT "8000"
 #define DATA_PATH "/data.json"
 #define MAX_JSON_DATA_LEN 1000 // arbitrary lenght
 struct db_response {
@@ -15,7 +15,7 @@ struct db_response {
 };
 
 //-----static variables
-static const char* s_http_port = "8000";
+static int alive;
 static struct mg_serve_http_opts s_http_server_opts;
 
 //-----static functions
@@ -52,12 +52,13 @@ static void serve_json_data (struct mg_connection* nc, struct http_message* hm) 
                    "Content-Type: application/json\r\n"
                    "Content-Length: %zu\r\n"
                    "\r\n%s\r\n",
-    data_len, json_buffer);
+    data_len, &json_buff);
 }
 
 // database functions
-static struct db_response get_data (char** buffer) {
-    char* err_msg = NULL;
+static struct db_response* get_data (void) {
+    struct db_response* ret = malloc (sizeof (struct db_response));
+    char* err_msg           = NULL;
     int status;
     sqlite3* db;
 
@@ -79,7 +80,7 @@ static struct db_response get_data (char** buffer) {
 }
 
 // json functions
-static size_t format_data (char** json_buff, ) {
+static size_t format_data (char** json_buff2) {
 
     return 5;
 }
@@ -94,22 +95,22 @@ static const char* json_cat_str (char* dest, const char* src) {
     return &dest[i];
 }
 
-int main (void) {
+int main (int argc, char* argv[]) {
+    static const char* s_http_port = DEFAULT_PORT;
     struct mg_mgr mgr;
     struct mg_connection* nc;
 
-    mg_mgr_init (&mgr, NULL);
-    nc = mg_bind (&mgr, s_http_port, ev_handler);
-
     // Set up HTTP server parameters
-    mg_set_protocol_http_websocket (nc);
-    s_http_server_opts.document_root =
-    "./web_viewer/web_site";                    // Serve current directory
-    s_http_server_opts.dav_document_root = "."; // Allow access via WebDav
+    s_http_server_opts.document_root            = "./web_viewer/web_site";
     s_http_server_opts.enable_directory_listing = "yes";
 
-    printf ("Starting web server on port %s\n", s_http_port);
-    while (1) {
+    //  init mongoose
+    mg_mgr_init (&mgr, NULL);
+    nc = mg_bind (&mgr, s_http_port, ev_handler);
+    mg_set_protocol_http_websocket (nc);
+
+    printf ("Listening on port: %s\n", s_http_port);
+    while (alive) {
         mg_mgr_poll (&mgr, 1000);
     }
     mg_mgr_free (&mgr);
