@@ -1,4 +1,5 @@
 //-----includes
+#include <signal.h>
 #include <sqlite3.h>
 #include <string.h>
 
@@ -11,7 +12,7 @@
 struct db_response {
     int argc;
     char** argv;
-    char** azColName;
+    char** col_names;
 };
 
 //-----static variables
@@ -22,8 +23,9 @@ static struct mg_serve_http_opts s_http_server_opts;
 static void ev_handler (struct mg_connection* nc, int ev, void* p);
 static void serve_json_data (struct mg_connection* nc, struct http_message* hm);
 static struct db_response* get_data (void);
+int db_callback (void* ret, int argc, char** argv, char** col_names);
 static size_t format_data ();
-static const char* json_cat_str (char* dest, const char* src);
+static void sigint_handler (int sig);
 
 //-----function defenitions
 // http functions
@@ -68,7 +70,7 @@ static struct db_response* get_data (void) {
     } else {
         status = sqlite3_exec (db,
         "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
-        format_data, buffer, &err_msg);
+        db_callback, &ret, &err_msg);
         if (status != SQLITE_OK) {
             printf ("SQL error: %s\n", err_msg);
             sqlite3_free (err_msg);
@@ -76,7 +78,14 @@ static struct db_response* get_data (void) {
     }
 
     sqlite3_close (db);
-    return;
+    return ret;
+}
+
+int db_callback (void* ret, int argc, char** argv, char** col_names) {
+    ((struct db_response*)ret)->argc      = argc;
+    ((struct db_response*)ret)->argv      = argv;
+    ((struct db_response*)ret)->col_names = col_names;
+    return 0;
 }
 
 // json functions
@@ -85,20 +94,20 @@ static size_t format_data (char** json_buff2) {
     return 5;
 }
 
-static const char* json_cat_str (char* dest, const char* src) {
-    int i;
-
-    for (i = 0;;) {
-        ;
-    }
-
-    return &dest[i];
+// MAIN functions
+void sigint_handler (int sig) {
+    alive = 0;
 }
 
 int main (int argc, char* argv[]) {
     static const char* s_http_port = DEFAULT_PORT;
     struct mg_mgr mgr;
     struct mg_connection* nc;
+    struct sigaction handler;
+
+    alive              = 1;
+    handler.sa_handler = sigint_handler;
+    sigaction (SIGINT, &handler, NULL);
 
     // Set up HTTP server parameters
     s_http_server_opts.document_root            = "./web_viewer/web_site";
