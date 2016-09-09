@@ -20,8 +20,8 @@ static int alive;
 static struct mg_serve_http_opts s_http_server_opts;
 
 //-----static functions
-static void ev_handler (struct mg_connection* nc, int ev, void* p);
-static void serve_json_data (struct mg_connection* nc, struct http_message* hm);
+static void ev_handler (struct mg_connection* connection, int ev, void* p);
+static void serve_json_data (struct mg_connection* connection, struct http_message* message);
 static struct db_response* get_data (void);
 int db_callback (void* ret, int argc, char** argv, char** col_names);
 static size_t format_data ();
@@ -29,31 +29,31 @@ static void sigint_handler (int sig);
 
 //-----function defenitions
 // http functions
-static void ev_handler (struct mg_connection* nc, int ev, void* p) {
-    struct http_message* hm = (struct http_message*)p;
+static void ev_handler (struct mg_connection* connection, int ev, void* p) {
+    struct http_message* message = (struct http_message*)p;
     if (ev == MG_EV_HTTP_REQUEST) {
-        if ((strlen (DATA_PATH) == hm->uri.len) &&
-        (strncmp (DATA_PATH, hm->uri.p, hm->uri.len) == 0)) {
-            serve_json_data (nc, hm);
+        if ((strlen (DATA_PATH) == message->uri.len) &&
+        (strncmp (DATA_PATH, message->uri.p, message->uri.len) == 0)) {
+            serve_json_data (connection, message);
         } else {
-            mg_serve_http (nc, hm, s_http_server_opts);
+            mg_serve_http (connection, message, s_http_server_opts);
         }
-        printf ("Served: %.*s\n", (int)hm->uri.len, hm->uri.p);
+        printf ("Served: %.*s\n", (int)message->uri.len, message->uri.p);
     }
 }
 
-static void serve_json_data (struct mg_connection* nc, struct http_message* hm) {
+static void serve_json_data (struct mg_connection* connection, struct http_message* message) {
     size_t data_len;
     char json_buff;
 
     struct db_response* data = get_data ();
     data_len                 = format_data (&json_buff, data);
 
-    mg_printf (nc, "HTTP/1.1 200 OK\r\n"
-                   "Cache: no-cache\r\n"
-                   "Content-Type: application/json\r\n"
-                   "Content-Length: %zu\r\n"
-                   "\r\n%s\r\n",
+    mg_printf (connection, "HTTP/1.1 200 OK\r\n"
+                           "Cache: no-cache\r\n"
+                           "Content-Type: application/json\r\n"
+                           "Content-Length: %zu\r\n"
+                           "\r\n%s\r\n",
     data_len, &json_buff);
 }
 
@@ -102,7 +102,7 @@ void sigint_handler (int sig) {
 int main (int argc, char* argv[]) {
     static const char* s_http_port = DEFAULT_PORT;
     struct mg_mgr mgr;
-    struct mg_connection* nc;
+    struct mg_connection* connection;
     struct sigaction handler;
 
     alive              = 1;
@@ -115,8 +115,8 @@ int main (int argc, char* argv[]) {
 
     //  init mongoose
     mg_mgr_init (&mgr, NULL);
-    nc = mg_bind (&mgr, s_http_port, ev_handler);
-    mg_set_protocol_http_websocket (nc);
+    connection = mg_bind (&mgr, s_http_port, ev_handler);
+    mg_set_protocol_http_websocket (connection);
 
     printf ("Listening on port: %s\n", s_http_port);
     while (alive) {
