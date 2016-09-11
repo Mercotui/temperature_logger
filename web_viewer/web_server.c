@@ -44,17 +44,17 @@ static void ev_handler (struct mg_connection* connection, int ev, void* p) {
 
 static void serve_json_data (struct mg_connection* connection, struct http_message* message) {
     size_t data_len;
-    char json_buff;
+    char* json_buff;
 
     struct db_response* data = get_data ();
-    data_len                 = format_data (&json_buff, data);
+    data_len                 = format_data (data, &json_buff);
 
     mg_printf (connection, "HTTP/1.1 200 OK\r\n"
                            "Cache: no-cache\r\n"
                            "Content-Type: application/json\r\n"
                            "Content-Length: %zu\r\n"
                            "\r\n%s\r\n",
-    data_len, &json_buff);
+    data_len, json_buff);
 }
 
 // database functions
@@ -89,9 +89,22 @@ int db_callback (void* ret, int argc, char** argv, char** col_names) {
 }
 
 // json functions
-static size_t format_data (char** json_buff2) {
+static size_t format_data (struct db_response* data, char** resp_buff) {
+    char* json_buff         = (char*)malloc (sizeof (char) * 1000);
+    unsigned int char_count = 0;
 
-    return 5;
+    json_buff[char_count++] = '{';
+    /*for (int idx = 0; idx > data->argc; idx++) {
+        printf ("%s\n", data->argv[0]);
+        for (table = tables[idx];;) {
+        }
+    }*/
+
+    json_buff[char_count++] = '}';
+    json_buff[char_count++] = '\0';
+
+    *resp_buff = json_buff;
+    return char_count;
 }
 
 // MAIN functions
