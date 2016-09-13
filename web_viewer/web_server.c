@@ -55,11 +55,13 @@ static void serve_json_data (struct mg_connection* connection, struct http_messa
                            "Content-Length: %zu\r\n"
                            "\r\n%s\r\n",
     data_len, json_buff);
+
+    free (json_buff);
 }
 
 // database functions
 static struct db_response* get_data (void) {
-    struct db_response* ret = malloc (sizeof (struct db_response));
+    struct db_response* ret = calloc (1, sizeof (struct db_response));
     char* err_msg           = NULL;
     int status;
     sqlite3* db;
@@ -93,9 +95,6 @@ static size_t format_data (struct db_response* data, char** resp_buff) {
     char* json_buff         = (char*)malloc (sizeof (char) * 1000);
     unsigned int char_count = 0;
 
-    for (; 0;) {
-        printf ("hey\n");
-    }
     json_buff[char_count++] = '{';
     for (int idx = 0; idx < data->argc; idx++) {
         printf ("%s\n", data->argv[0]);
@@ -104,7 +103,7 @@ static size_t format_data (struct db_response* data, char** resp_buff) {
             }*/
     }
 
-    json_buff[char_count] = '}';
+    json_buff[char_count++] = '}';
 
     *resp_buff = json_buff;
     return char_count;
