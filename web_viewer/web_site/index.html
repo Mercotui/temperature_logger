@@ -5,26 +5,35 @@
     <meta charset="utf-8">
     <title>Temparature Log</title>
     <link rel='shortcut icon' href='/favicon.ico' type='image/x-icon' />
-    <link rel="stylesheet" href="styles.css" charset="utf-8" type="text/css">
+    <link rel="stylesheet" href="styles.css" charset="utf-8" type="text/css" />
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.2.2/Chart.min.js"></script>
+    <script type="text/javascript" src="live.js"></script>
 </head>
 
-<body>
-    <div class="paper">
-        <div class="content">
-            <h2>Temparature logger</h2>
-            <div id="chart_div" class="chart"></div>
-            <h3>View options</h3>
-            <ulul class="options">
-                <li>
-                    <input type="checkbox" id="chkbox_option_highlight"> draw background for weather
-                </li>
-                <li>
-                    <input type="checkbox" id="chkbox_option_skip"> skip "weather only" points
-                </li>
-            </ul>
-            <script type="text/javascript" src="live.js"></script>
+<body onload="init_chart();">
+    <div class="paperHolder">
+        <div class="paper">
+            <div class="content">
+                <h2>Temparature logger</h2>
+                <canvas id="chart_canvas" class="chart"></canvas>
+                <h3>View options</h3>
+                <ul class="options">
+                    <li>
+                        <input type="checkbox" id="chkbox_option_highlight"/> draw background for weather
+                    </li>
+                    <li>
+                        <input type="checkbox" id="chkbox_option_skip"/> skip "weather only" points
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
-</body>
 
+    <footer>
+        <div class="foot_link">
+            <a target="_blank" href="https://github.com/Mercotui/temperature_logger">Mercotui's Temperature Logger</a>
+        </div>
+    </footer>
+</body>
 </html>

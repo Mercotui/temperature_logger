@@ -1,9 +1,12 @@
 body {
     background: #384040;
 }
+.paperHolder{
+    min-height: calc(100vh - 60px);
+}
 .paper {
     background: #DDDDDD;
-    width: 50%;
+    width: 60%;
     margin-top: 30px;
     margin-left: auto;
     margin-right: auto;
@@ -11,9 +14,9 @@ body {
 }
 .content {
     padding-top: 30px;
-    padding-right: 30px;
+    padding-right: 50px;
     padding-bottom: 50px;
-    padding-left: 80px;
+    padding-left: 50px;
     font-family: sans-serif;
 }
 .chart {
@@ -22,4 +25,19 @@ body {
 }
 .options{
     list-style-type: none;
+}
+footer{
+    position:fixed;
+    width: 100%;
+}
+footer .foot_link{
+    text-align: center;
+}
+footer a{
+    text-decoration: none;
+    color: black;
+}
+footer a:hover {
+    text-decoration: underline;
+    color: grey;
 }

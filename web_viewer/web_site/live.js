@@ -1,59 +1,28 @@
-function onload(){
-    var chart = new CanvasJS.Chart("chart_div",{
-        zoomEnabled: true,
-        title: {
-            text: "Temperatures from datatbase"
-        },
-        toolTip: {
-            shared: true
-
-        },
-        legend: {
-            verticalAlign: "top",
-            horizontalAlign: "center",
-            fontSize: 14,
-            fontWeight: "bold",
-            fontFamily: "calibri",
-            fontColor: "dimGrey"
-        },
-        axisX: {
-            title: "chart updates every 3 secs"
-        },
-        axisY:{
-            prefix: '$',
-            includeZero: false
-        },
-        data: [{
-            // dataSeries1
-            type: "line",
-            xValueType: "dateTime",
-            showInLegend: true,
-            name: "Company A",
-            dataPoints: dataPoints1
-        },
-        {
-            // dataSeries2
-            type: "line",
-            xValueType: "dateTime",
-            showInLegend: true,
-            name: "Company B" ,
-            dataPoints: dataPoints2
-        }],
-        legend:{
-            cursor:"pointer",
-            itemclick : function(e) {
-                if (typeof(e.dataSeries.visible) === "undefined" || e.dataSeries.visible) {
-                    e.dataSeries.visible = false;
-                }
-                else {
-                    e.dataSeries.visible = true;
-                }
-                chart.render();
+function init_chart(){
+    var ctx = document.getElementById("chart_canvas");
+    var temp_chart = new Chart(ctx, {
+        type: 'line',
+        options: {
+            scales: {
+                xAxes: [{
+                    type: 'linear',
+                    position: 'bottom'
+                }]
             }
         }
     });
+    setInterval(drawChart(temp_chart),5000);
+}
 
-    load_data();
+function drawChart(temp_chart) {
+    temp_chart.data= {
+        datasets: [{
+            label: 'Scatter Dataset',
+            data: [{ x: -10, y: 0 }, { x: 0, y: 10 }, { x: 10, y: 5 }]
+        }, {label: 'Temperature',
+            data: [{ x: -5, y: 10}, {x: 5, y:5}]}]
+    }
+    temp_chart.addData();
 }
 
 function load_data(){
