@@ -8,23 +8,23 @@ poorly ventilated room. Should also show how the weather impacts a Computers the
 
 ## Features:
 A simple webviewer that dynamically graphs the latest data.
-- (wip)Select which temperatures to graph.
-- (wip)Select time period to graph.
-- (wip)Select temperature to highlight by adding area under it.
+-   (wip)Select which temperatures to graph.
+-   (wip)Select time period to graph.
+-   (wip)Select temperature to highlight by adding area under it.
 
 (wip)A data scraper to collect temperatures over the network.
-- http? will http conflict with the web server?
-- tcp? tcp is usefull for tiny digital thermometers
+-   http? will http conflict with the web server?
+-   tcp? tcp is usefull for tiny digital thermometers
 
 A weather api scraper, uses a user provided http json api.
-- config parameter to specify http uri
-- config parameter to specify json node path to temperature
+-   config parameter to specify http uri
+-   config parameter to specify json node path to temperature
 
 ## Dependencies:
 This project uses the Mongoose HTTP server, which is provided via a submodule.
 It also uses SQLite3, not included.
 Bring your own:
-- sqlite3
-- cmake
-- compiler (gcc or clang are known to work)
-- web browser (tested on firefox and chrome/chromium)
+-   sqlite3
+-   cmake
+-   compiler (gcc or clang are known to work)
+-   web browser (tested on firefox and chrome/chromium)
