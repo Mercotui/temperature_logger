@@ -1,6 +1,5 @@
 # temperature_logger
-Early implementation!
-Logs multiple device's temperatures over the network, and compare them to the weather
+Logs multiple device's temperatures over a network, and compare them to the weather.
 
 ## Uses:
 I mainly just want to graph out my CPU core temperatures against the temperature of my
@@ -26,5 +25,5 @@ It also uses SQLite3, not included.
 Bring your own:
 -   sqlite3
 -   cmake
--   compiler (gcc or clang are known to work)
+-   C compiler (gcc or clang are known to work)
 -   web browser (tested on firefox and chrome/chromium)
