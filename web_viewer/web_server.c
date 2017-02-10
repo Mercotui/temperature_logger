@@ -6,6 +6,7 @@
 #include "../mongoose/mongoose.h"
 
 //-----defines
+#define WEBSITE_DIR "./web_site"
 #define DEFAULT_PORT "8000"
 #define DATA_PATH "/data.json"
 #define MAX_JSON_DATA_LEN 1000 // arbitrary lenght
@@ -22,7 +23,7 @@ static struct mg_serve_http_opts s_http_server_opts;
 //-----static functions
 static void ev_handler (struct mg_connection* connection, int ev, void* p);
 static void serve_json_data (struct mg_connection* connection, struct http_message* message);
-static struct db_response* get_data (void);
+static int get_data (struct db_response* data);
 int db_callback (void* ret, int argc, char** argv, char** col_names);
 static size_t format_data ();
 static void sigint_handler (int sig);
@@ -46,8 +47,9 @@ static void serve_json_data (struct mg_connection* connection, struct http_messa
     size_t data_len;
     char* json_buff;
 
-    struct db_response* data = get_data ();
-    data_len                 = format_data (data, &json_buff);
+    struct db_response data;
+    get_data (&data);
+    data_len = format_data (data, &json_buff);
 
     mg_printf (connection, "HTTP/1.1 200 OK\r\n"
                            "Cache: no-cache\r\n"
@@ -60,7 +62,7 @@ static void serve_json_data (struct mg_connection* connection, struct http_messa
 }
 
 // database functions
-static struct db_response* get_data (void) {
+static int get_data (struct db_response* data) {
     struct db_response* ret = calloc (1, sizeof (struct db_response));
     char* err_msg           = NULL;
     int status;
@@ -72,7 +74,7 @@ static struct db_response* get_data (void) {
     } else {
         status = sqlite3_exec (db,
         "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
-        db_callback, &ret, &err_msg);
+        db_callback, &data, &err_msg);
         if (status != SQLITE_OK) {
             printf ("SQL error: %s\n", err_msg);
             sqlite3_free (err_msg);
@@ -80,7 +82,7 @@ static struct db_response* get_data (void) {
     }
 
     sqlite3_close (db);
-    return ret;
+    return status;
 }
 
 int db_callback (void* ret, int argc, char** argv, char** col_names) {
@@ -125,7 +127,7 @@ int main (int argc, char* argv[]) {
     sigaction (SIGINT, &handler, NULL);
 
     // Set up HTTP server parameters
-    s_http_server_opts.document_root            = "./web_viewer/web_site";
+    s_http_server_opts.document_root            = WEBSITE_DIR;
     s_http_server_opts.enable_directory_listing = "yes";
 
     //  init mongoose
