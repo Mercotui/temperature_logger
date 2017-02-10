@@ -5,18 +5,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../frozen/frozen.h"
 #include "../mongoose/mongoose.h"
 
 //-----defines
 #define S_POLL_TIME 300 // 5 minutes
 #define SQLCMD_FORMAT "INSERT INTO Weather VALUES(CURRENT_TIMESTAMP, %s);"
-#define CONF_PATH "./weather_scraper/weather_scraper.conf"
+#define CONF_PATH "./weather_scraper.conf"
 #define CONF_URI_HEADER "weather uri="
 #define CONF_JSONPATH_HEADER "termperature json node="
 
-//-----static variables
-static char* http_req_uri;
-static char* json_temparature_node;
+//-----global variables
+static char* _req_uri;
+static char** _json_nodes;
+int _alive;
+int _connection_open;
 
 //-----static functions
 static void* http_request_thread (void*);
@@ -29,36 +32,34 @@ static void config_trim_line (char* str);
 
 //-----function defenitions
 // http functions
-static void* http_request_thread (void* data) {
-    struct mg_mgr* mgr = (struct mg_mgr*)data;
-
-    while (1) {
-        mg_connect_http (mgr, http_event_handler, http_req_uri, NULL, NULL);
-        sleep (S_POLL_TIME);
-    }
-
-    return NULL;
-}
-
 static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data) {
     struct http_message* hm = (struct http_message*)ev_data;
 
     switch (ev) {
         case MG_EV_CONNECT: {
             if (*(int*)ev_data != 0) {
-                printf ("connect() failed: %s\n", strerror (*(int*)ev_data));
+                printf ("failed to connect: %s\n", strerror (*(int*)ev_data));
+            } else {
+                printf ("sent request to: %s\n", _req_uri);
             }
             break;
         }
         case MG_EV_HTTP_REPLY: {
+            printf ("recieved reply\n");
             char* temperature = http_parse_resp (hm->body.p, hm->body.len);
             if (temperature != NULL) {
                 db_insert_temperature (temperature);
                 free (temperature);
             }
+            _connection_open = 0;
             break;
         }
-        default: break;
+        case MG_EV_CLOSE: {
+            _connection_open = 0;
+            printf ("connection closed\n");
+            break;
+        }
+        default: { break; }
     }
 }
 
@@ -67,15 +68,15 @@ static char* http_parse_resp (const char* body, const size_t len) {
     struct json_token *arr, *arr2, *tok;
 
     arr  = parse_json2 (body, len);
-    tok  = find_json_token (arr, "current");
+    tok  = find_json_token (arr, "main");
     arr2 = parse_json2 (tok->ptr, tok->len);
-    tok  = find_json_token (arr2, "temp_c");
+    tok  = find_json_token (arr2, "temp");
 
     char* endptr;
     strtod (tok->ptr, &endptr);
     if (endptr == tok->ptr) {
-        printf ("Given temperature node \"%s\" not valid, value was \"%.*s\"\n",
-        json_temparature_node, tok->len, tok->ptr);
+        printf ("Given temperature node \"%s\" not valid, value was
+       \"%.*s\"\n", json_temparature_node, tok->len, tok->ptr);
     } else {
         ret = strndup (tok->ptr, tok->len);
     }
@@ -153,8 +154,8 @@ static int config_parse (const char* uri_line, const char* node_line) {
     int status = 0;
 
     if (strncmp (uri_line, CONF_URI_HEADER, strlen (CONF_URI_HEADER)) == 0) {
-        http_req_uri = strdup (uri_line + strlen (CONF_URI_HEADER));
-        config_trim_line (http_req_uri);
+        _req_uri = strdup (uri_line + strlen (CONF_URI_HEADER));
+        config_trim_line (_req_uri);
     } else {
         status = -1;
         printf ("%s does not follow format %s=http://example.com/api/weather\n",
@@ -162,8 +163,9 @@ static int config_parse (const char* uri_line, const char* node_line) {
     }
 
     if (strncmp (node_line, CONF_JSONPATH_HEADER, strlen (CONF_JSONPATH_HEADER)) == 0) {
-        json_temparature_node = strdup (node_line + strlen (CONF_JSONPATH_HEADER));
-        config_trim_line (json_temparature_node);
+        _json_nodes  = malloc (sizeof (char*));
+        *_json_nodes = strdup (node_line + strlen (CONF_JSONPATH_HEADER));
+        config_trim_line (*_json_nodes);
     } else {
         status = -1;
         printf ("%s does not follow format %s=example.weather.current.temp\n",
@@ -189,17 +191,21 @@ int main (int argc, char* argv[]) {
 
     status = config_get ();
     if (status != -1) {
-        pthread_t req_thread;
-        pthread_create (&req_thread, NULL, http_request_thread, &mgr);
-
-        while (1) {
-            mg_mgr_poll (&mgr, 1000);
+        _alive = 1;
+        while (_alive) {
+            if (mg_connect_http (&mgr, http_event_handler, _req_uri, NULL, NULL) == NULL) {
+                printf ("failed to connect to %s\n", _req_uri);
+            } else {
+                _connection_open = 1;
+                while (_connection_open) {
+                    mg_mgr_poll (&mgr, 1000);
+                }
+            }
+            sleep (S_POLL_TIME);
         }
-
-        pthread_join (req_thread, NULL);
-        mg_mgr_free (&mgr);
-        free (http_req_uri);
-        free (json_temparature_node);
     }
+    mg_mgr_free (&mgr);
+    free (_req_uri);
+    free (_json_nodes);
     return status;
 }
