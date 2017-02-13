@@ -66,21 +66,22 @@ static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data)
 static char* http_parse_resp (const char* body, const size_t len) {
     char* ret = NULL;
     struct json_token *arr, *arr2, *tok;
-
-    arr  = parse_json2 (body, len);
+    /*
+    arr  = parse_json (body, len);
     tok  = find_json_token (arr, "main");
-    arr2 = parse_json2 (tok->ptr, tok->len);
+    arr2 = parse_json (tok->ptr, tok->len);
     tok  = find_json_token (arr2, "temp");
 
     char* endptr;
     strtod (tok->ptr, &endptr);
     if (endptr == tok->ptr) {
-        printf ("Given temperature node \"%s\" not valid, value was
-       \"%.*s\"\n", json_temparature_node, tok->len, tok->ptr);
+        printf ("Given temperature node \"%s\" not valid, value
+   was\"%.*s\"\n",
+        *_json_nodes, tok->len, tok->ptr);
     } else {
         ret = strndup (tok->ptr, tok->len);
     }
-
+    */
     return ret;
 }
 
@@ -108,9 +109,9 @@ static void db_insert_temperature (char* temperature) {
             sprintf (sqlcmd, SQLCMD_FORMAT, temperature);
             status = sqlite3_exec (db, sqlcmd, NULL, NULL, &err_msg);
             if (status == SQLITE_OK) {
-                printf ("Inserted %s\n", temperature);
+                printf ("Inserted %s\n\n", temperature);
             } else {
-                printf ("SQL error: %s\n", err_msg);
+                printf ("SQL error: %s\n\n", err_msg);
                 sqlite3_free (err_msg);
             }
         }
