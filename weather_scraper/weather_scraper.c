@@ -18,8 +18,8 @@
 //-----global variables
 static char* _req_uri;
 static char** _json_nodes;
-int _alive;
-int _connection_open;
+static int _alive;
+static int _connection_open;
 
 //-----static functions
 static void* http_request_thread (void*);
@@ -51,7 +51,7 @@ static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data)
                 db_insert_temperature (temperature);
                 free (temperature);
             }
-            _connection_open = 0;
+            nc->flags |= MG_F_CLOSE_IMMEDIATELY;
             break;
         }
         case MG_EV_CLOSE: {
