@@ -3,7 +3,7 @@
 #include <sqlite3.h>
 #include <string.h>
 
-#include "../mongoose/mongoose.h"
+#include "../mongoose_http/mongoose.h"
 
 //-----defines
 #define WEBSITE_DIR "./web_site"

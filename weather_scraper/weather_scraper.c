@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../frozen/frozen.h"
-#include "../mongoose/mongoose.h"
+#include "../mongoose_http/mongoose.h"
+#include "../parson_json/parson.h"
 
 //-----defines
 #define S_POLL_TIME 300 // 5 minutes
