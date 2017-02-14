@@ -1,28 +1,66 @@
+var samples = 10;
+var speed = 1000;
+var values = [];
+var values2 = [];
+var labels = [];
+var charts = [];
+var temperature_chart;
+
+values.length = samples;
+labels.length = samples;
+values.fill(0);
+labels.fill(0);
+
+values2.length = samples;
+values2.fill(0);
+
 function init_chart(){
-    var ctx = document.getElementById("chart_canvas");
-    var temp_chart = new Chart(ctx, {
-        type: 'line',
-        options: {
-            scales: {
-                xAxes: [{
-                    type: 'linear',
-                    position: 'bottom'
-                }]
-            }
-        }
+    var canvas = document.getElementById('chart_canvas');
+    var ctx = canvas.getContext('2d');
+
+    temperature_chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+                label: "Weather",
+                fillColor: "rgba(50,50,50,0.5)",
+                strokeColor: "rgba(220,220,220,1)",
+                pointColor: "rgba(220,220,220,1)",
+                pointStrokeColor: "#fff",
+                data: values
+            },{
+                label: "Room",
+                fill:false,
+                borderColor: "rgba(75,192,192,1)",
+                fillColor: "rgba(151,187,205,0.2)",
+                strokeColor: "rgba(100,100,205,1)",
+                pointColor: "rgba(151,187,205,1)",
+                pointStrokeColor: "#fff",
+                data: values2
+            }]
+    }
     });
-    setInterval(drawChart(temp_chart),5000);
+
+    setInterval(function() {
+        requestAnimationFrame(chart_add);
+      }, speed);
 }
 
-function drawChart(temp_chart) {
-    temp_chart.data= {
-        datasets: [{
-            label: 'Scatter Dataset',
-            data: [{ x: -10, y: 0 }, { x: 0, y: 10 }, { x: 10, y: 5 }]
-        }, {label: 'Temperature',
-            data: [{ x: -5, y: 10}, {x: 5, y:5}]}]
-    }
-    temp_chart.addData();
+function chart_add(){
+    var d = new Date();
+    var label = d.getSeconds();
+    labels.push(label);
+    labels.shift();
+
+    value = Math.random() * 50;
+    values.push(value);
+    values.shift();
+
+    value = Math.random() * 50;
+    values2.push(value);
+    values2.shift();
+    temperature_chart.update();
 }
 
 function load_data(){
@@ -74,3 +112,5 @@ function parse_data(jsonObj){
 
     chart.render();
 }
+
+init_chart();
