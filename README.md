@@ -6,21 +6,20 @@ I mainly just want to graph out my CPU core temperatures against the temperature
 poorly ventilated room. Should also show how the weather impacts a Computers thermal performance.
 
 ## Features:
-A simple webviewer that dynamically graphs the latest data.
--   (wip)Select which temperatures to graph.
--   (wip)Select time period to graph.
--   (wip)Select temperature to highlight by adding area under it.
+A simple website viewer that dynamically graphs the latest data.
+-   Select which temperatures to graph.
+-   (wip)Select time period to graph (Day, Week, Month, Year).
 
 (wip)A data scraper to collect temperatures over the network.
 -   http? will http conflict with the web server?
 -   tcp? tcp is usefull for tiny digital thermometers
 
-A weather api scraper, uses a user provided http json api.
--   config parameter to specify http uri
--   config parameter to specify json node path to temperature
+A weather API scraper
+-   config parameter to specify the URI for an HTTP weather API
+-   config parameter to specify the JSON nodes for temperature
 
 ## Dependencies:
-This project uses the Mongoose HTTP server, which is provided via a submodule.
+This project uses Mongoose (HTTP), and Parson (JSON), which are included in the repo.
 It also uses SQLite3, not included.
 Bring your own:
 -   sqlite3
