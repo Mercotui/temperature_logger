@@ -25,7 +25,7 @@ static void ev_handler (struct mg_connection* connection, int ev, void* p);
 static void serve_json_data (struct mg_connection* connection, struct http_message* message);
 static int get_data (struct db_response* data);
 int db_callback (void* ret, int argc, char** argv, char** col_names);
-static size_t format_data ();
+static size_t format_data (struct db_response* data, char** resp_buff);
 static void sigint_handler (int sig);
 
 //-----function defenitions
@@ -49,7 +49,7 @@ static void serve_json_data (struct mg_connection* connection, struct http_messa
 
     struct db_response data;
     get_data (&data);
-    data_len = format_data (data, &json_buff);
+    data_len = format_data (&data, &json_buff);
 
     mg_printf (connection, "HTTP/1.1 200 OK\r\n"
                            "Cache: no-cache\r\n"
@@ -63,8 +63,7 @@ static void serve_json_data (struct mg_connection* connection, struct http_messa
 
 // database functions
 static int get_data (struct db_response* data) {
-    struct db_response* ret = calloc (1, sizeof (struct db_response));
-    char* err_msg           = NULL;
+    char* err_msg = NULL;
     int status;
     sqlite3* db;
 
