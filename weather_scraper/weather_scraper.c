@@ -1,4 +1,5 @@
 //-----includes
+#define _GNU_SOURCE
 #include <pthread.h>
 #include <sqlite3.h>
 #include <stdio.h>
@@ -10,22 +11,21 @@
 
 //-----defines
 #define S_POLL_TIME 300 // 5 minutes
-#define SQLCMD_FORMAT "INSERT INTO Weather VALUES(CURRENT_TIMESTAMP, %s);"
+#define SQLCMD_FORMAT "INSERT INTO Weather VALUES(CURRENT_TIMESTAMP, %f);"
 #define CONF_PATH "./weather_scraper.conf"
 #define CONF_URI_HEADER "weather uri="
 #define CONF_JSONPATH_HEADER "termperature json node="
 
 //-----global variables
 static char* _req_uri;
-static char** _json_nodes;
+static char* _json_nodes_path;
 static int _alive;
 static int _connection_open;
 
 //-----static functions
-static void* http_request_thread (void*);
 static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data);
-static char* http_parse_resp (const char* body, const size_t len);
-static void db_insert_temperature (char* temperature);
+static double http_parse_resp (const char* body, const size_t len);
+static void db_insert_temperature (double temperature);
 static int config_get (void);
 static int config_parse (const char* uri_line, const char* node_line);
 static void config_trim_line (char* str);
@@ -46,11 +46,10 @@ static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data)
         }
         case MG_EV_HTTP_REPLY: {
             printf ("recieved reply\n");
-            char* temperature = http_parse_resp (hm->body.p, hm->body.len);
-            if (temperature != NULL) {
-                db_insert_temperature (temperature);
-                free (temperature);
-            }
+
+            double temperature = http_parse_resp (hm->body.p, hm->body.len);
+            db_insert_temperature (temperature);
+
             nc->flags |= MG_F_CLOSE_IMMEDIATELY;
             break;
         }
@@ -63,31 +62,42 @@ static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data)
     }
 }
 
-static char* http_parse_resp (const char* body, const size_t len) {
-    char* ret = NULL;
-    struct json_token *arr, *arr2, *tok;
-    /*
-    arr  = parse_json (body, len);
-    tok  = find_json_token (arr, "main");
-    arr2 = parse_json (tok->ptr, tok->len);
-    tok  = find_json_token (arr2, "temp");
+static double http_parse_resp (const char* body, const size_t len) {
+    double ret = 0;
 
-    char* endptr;
-    strtod (tok->ptr, &endptr);
-    if (endptr == tok->ptr) {
-        printf ("Given temperature node \"%s\" not valid, value
-   was\"%.*s\"\n",
-        *_json_nodes, tok->len, tok->ptr);
+    JSON_Value* json_root;
+    JSON_Object* json_root_object;
+    json_root        = json_parse_string (body);
+    json_root_object = json_value_get_object (json_root);
+
+    JSON_Value* json_temp_node =
+    json_object_dotget_value (json_root_object, _json_nodes_path);
+
+    if (json_temp_node != NULL) {
+        switch (json_value_get_type (json_temp_node)) {
+            case JSONString:
+                ret = strtod (json_value_get_string (json_temp_node), NULL);
+                break;
+            case JSONNumber:
+                ret = json_value_get_number (json_temp_node);
+                break;
+            default:
+                printf ("'%s' is not a number or string in "
+                        "response:\n>>>>>\n%s\n<<<<<\n",
+                _json_nodes_path, body);
+        }
     } else {
-        ret = strndup (tok->ptr, tok->len);
+        printf ("did not find '%s' in response:\n>>>>>\n%s\n<<<<<\n", _json_nodes_path, body);
     }
-    */
+
+    json_value_free (json_temp_node);
+    json_value_free (json_root);
     return ret;
 }
 
 // database functions
 // CREATE TABLE Weather (Time INT?, Temperature DOUBLE);
-static void db_insert_temperature (char* temperature) {
+static void db_insert_temperature (double temperature) {
     char* err_msg = NULL;
     int status;
     sqlite3* db;
@@ -103,13 +113,14 @@ static void db_insert_temperature (char* temperature) {
             printf ("SQL error: %s\n", err_msg);
             sqlite3_free (err_msg);
         } else {
-            size_t sqlcmd_len = strlen (SQLCMD_FORMAT) + strlen (temperature);
+            /*size_t sqlcmd_len = strlen (SQLCMD_FORMAT) + strlen (temperature);
             char* sqlcmd      = malloc (sqlcmd_len);
-
-            sprintf (sqlcmd, SQLCMD_FORMAT, temperature);
+*/
+            char* sqlcmd;
+            asprintf (&sqlcmd, SQLCMD_FORMAT, temperature);
             status = sqlite3_exec (db, sqlcmd, NULL, NULL, &err_msg);
             if (status == SQLITE_OK) {
-                printf ("Inserted %s\n\n", temperature);
+                printf ("Inserted %f\n\n", temperature);
             } else {
                 printf ("SQL error: %s\n\n", err_msg);
                 sqlite3_free (err_msg);
@@ -164,9 +175,8 @@ static int config_parse (const char* uri_line, const char* node_line) {
     }
 
     if (strncmp (node_line, CONF_JSONPATH_HEADER, strlen (CONF_JSONPATH_HEADER)) == 0) {
-        _json_nodes  = malloc (sizeof (char*));
-        *_json_nodes = strdup (node_line + strlen (CONF_JSONPATH_HEADER));
-        config_trim_line (*_json_nodes);
+        _json_nodes_path = strdup (node_line + strlen (CONF_JSONPATH_HEADER));
+        config_trim_line (_json_nodes_path);
     } else {
         status = -1;
         printf ("%s does not follow format %s=example.weather.current.temp\n",
@@ -207,6 +217,6 @@ int main (int argc, char* argv[]) {
     }
     mg_mgr_free (&mgr);
     free (_req_uri);
-    free (_json_nodes);
+    free (_json_nodes_path);
     return status;
 }
