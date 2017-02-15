@@ -112,7 +112,7 @@ static size_t format_data (struct db_response* data, char** resp_buff) {
 }
 
 // MAIN functions
-void sigint_handler (int sig) {
+static void sigint_handler (int sig) {
     alive = 0;
 }
 
