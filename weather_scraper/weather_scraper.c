@@ -1,6 +1,5 @@
 //-----includes
 #define _GNU_SOURCE
-#include <pthread.h>
 #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
