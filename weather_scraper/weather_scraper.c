@@ -194,10 +194,20 @@ static void config_trim_line (char* str) {
     *(end + 1) = '\0';
 }
 
+static void sigint_handler (int sig) {
+    _alive = 0;
+}
+
 // main function
 int main (int argc, char* argv[]) {
     int status = 0;
     struct mg_mgr mgr;
+    struct sigaction handler;
+
+    _alive             = 1;
+    handler.sa_handler = sigint_handler;
+    sigaction (SIGINT, &handler, NULL);
+
     mg_mgr_init (&mgr, NULL);
 
     status = config_get ();
