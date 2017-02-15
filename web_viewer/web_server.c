@@ -48,6 +48,7 @@ static void serve_json_data (struct mg_connection* connection, struct http_messa
     char* json_buff;
 
     struct db_response data;
+    memset (&data, 0, sizeof (struct db_response));
     get_data (&data);
     data_len = format_data (&data, &json_buff);
 
