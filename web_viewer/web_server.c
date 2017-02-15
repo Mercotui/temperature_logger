@@ -85,9 +85,10 @@ static int get_data (struct db_response* data) {
 }
 
 int db_callback (void* ret, int argc, char** argv, char** col_names) {
-    ((struct db_response*)ret)->argc      = argc;
-    ((struct db_response*)ret)->argv      = argv;
-    ((struct db_response*)ret)->col_names = col_names;
+    struct db_response* ret_ptr = (struct db_response*)ret;
+    ret_ptr->argc               = argc;
+    ret_ptr->argv               = argv;
+    ret_ptr->col_names          = col_names;
     return 0;
 }
 
