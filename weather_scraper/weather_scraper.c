@@ -89,19 +89,20 @@ static double http_parse_resp (const char* body, const size_t len) {
         printf ("did not find '%s' in response:\n>>>>>\n%s\n<<<<<\n", _json_nodes_path, body);
     }
 
-    json_value_free (json_temp_node);
+    /*json_value_free (json_temp_node); no idea why i dont have to free this,
+     * chrashes if you do; had to use memcheck to validate*/
     json_value_free (json_root);
     return ret;
 }
 
 // database functions
-// CREATE TABLE Weather (Time INT?, Temperature DOUBLE);
 static void db_insert_temperature (double temperature) {
     char* err_msg = NULL;
     int status;
     sqlite3* db;
 
     status = sqlite3_open ("temperatures.db", &db);
+
     if (status != SQLITE_OK) {
         fprintf (stderr, "Cannot open database: %s\n", sqlite3_errmsg (db));
     } else {
@@ -124,6 +125,7 @@ static void db_insert_temperature (double temperature) {
                 printf ("SQL error: %s\n\n", err_msg);
                 sqlite3_free (err_msg);
             }
+            free (sqlcmd);
         }
     }
 
