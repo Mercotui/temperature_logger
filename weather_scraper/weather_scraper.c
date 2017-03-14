@@ -62,6 +62,7 @@ static void http_event_handler (struct mg_connection* nc, int ev, void* ev_data)
 }
 
 static double http_parse_resp (const char* body, const size_t len) {
+    (void)len;
     double ret = 0;
 
     JSON_Value* json_root;
@@ -196,11 +197,14 @@ static void config_trim_line (char* str) {
 }
 
 static void sigint_handler (int sig) {
+    (void)sig;
     _alive = 0;
 }
 
 // main function
 int main (int argc, char* argv[]) {
+    (void)argc;
+    (void)argv;
     int status = 0;
     struct mg_mgr mgr;
     struct sigaction handler;
