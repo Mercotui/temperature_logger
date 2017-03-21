@@ -20,7 +20,7 @@
 
 struct db_data_node {
     char* time_stamp;
-    char* temp;
+    double temp;
     struct db_data_node* next;
 };
 
@@ -151,6 +151,7 @@ int db_callback_names (void* data, int argc, char** argv, char** col_names) {
 int db_callback_content (void* data, int argc, char** argv, char** col_names) {
     int status                              = 1;
     struct db_data_node*** end_node_pointer = (struct db_data_node***)data;
+    double converted_temp;
 
     // check if the data is formatted correctly
     if (argc == 2) {
@@ -163,6 +164,16 @@ int db_callback_content (void* data, int argc, char** argv, char** col_names) {
         }
     }
 
+    // try to convert temperature
+    if (status == 0) {
+        char* end_ptr;
+        converted_temp = strtod (argv[1], &end_ptr);
+
+        if (end_ptr == argv[1]) {
+            status = 1;
+        }
+    }
+
     // if passed format check, start reading
     if (status == 0) {
         struct db_data_node* data_node = malloc (sizeof (struct db_data_node));
@@ -172,9 +183,7 @@ int db_callback_content (void* data, int argc, char** argv, char** col_names) {
         data_node->time_stamp = malloc (time_lenght + 1);
         strncpy (data_node->time_stamp, argv[0], time_lenght + 1);
 
-        size_t temp_lenght = strlen (argv[1]);
-        data_node->temp    = malloc (temp_lenght + 1);
-        strncpy (data_node->temp, argv[1], temp_lenght + 1);
+        data_node->temp = converted_temp;
 
         **end_node_pointer = data_node;
         *end_node_pointer  = &(data_node->next);
@@ -190,7 +199,6 @@ void cleanup_data (void) {
         while (data_node != NULL) {
             struct db_data_node* next_data_node = data_node->next;
             free (data_node->time_stamp);
-            free (data_node->temp);
             free (data_node);
             data_node = next_data_node;
         }
@@ -200,23 +208,29 @@ void cleanup_data (void) {
 
 // json functions
 static char* format_data (void) {
-    JSON_Value* root_value = json_value_init_object ();
-    // JSON_Object* root_object = json_value_get_object (root_value);
-    char* serialized_string = NULL;
+    JSON_Value* root_value   = json_value_init_object ();
+    JSON_Object* root_object = json_value_get_object (root_value);
+    char* serialized_string  = NULL;
+
     for (int table_idx = 0;
          (table_idx < MAX_TABLE_COUNT) && (db_tables[table_idx].name != NULL); ++table_idx) {
-
+        JSON_Value* json_data_array_value = json_value_init_array ();
+        JSON_Array* json_data_array = json_value_get_array (json_data_array_value);
         struct db_data_node* data_node = db_tables[table_idx].first_data_node;
-        while (data_node != NULL) {
-            // json_array_append_value (array, json_value_init_number (double
-            // number));
-            // json_object_set_string (root_object, "name", "John Smith");
-            // json_object_set_number (root_object, "age", 25);
 
-            printf ("%s: %s\n", data_node->time_stamp, data_node->temp);
+        while (data_node != NULL) {
+            JSON_Value* json_data_node_value = json_value_init_object ();
+            JSON_Object* json_data_node = json_value_get_object (json_data_node_value);
+
+            json_object_set_number (
+            json_data_node, data_node->time_stamp, data_node->temp);
+
+            json_array_append_value (json_data_array, json_data_node_value);
 
             data_node = data_node->next;
         }
+
+        json_object_set_value (root_object, db_tables[table_idx].name, json_data_array_value);
     }
 
     serialized_string = json_serialize_to_string (root_value);
