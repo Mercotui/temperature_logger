@@ -94,7 +94,7 @@ static int get_data (void) {
 
     status = sqlite3_open ("temperatures.db", &db);
     if (status != SQLITE_OK) {
-        fprintf (stderr, "Cannot open database: %s\n", sqlite3_errmsg (db));
+        printf ("Cannot open database: %s\n", sqlite3_errmsg (db));
     } else {
         int tables_idx = 0;
         status         = sqlite3_exec (
@@ -234,7 +234,6 @@ static char* format_data (void) {
     }
 
     serialized_string = json_serialize_to_string (root_value);
-    printf ("%s\n", serialized_string);
 
     // free internal json structures
     json_value_free (root_value);
