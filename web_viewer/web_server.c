@@ -40,6 +40,7 @@ static void serve_json_data (struct mg_connection* connection, struct http_messa
 static int get_data (void);
 int db_callback_names (void* ret, int argc, char** argv, char** col_names);
 int db_callback_content (void* data, int argc, char** argv, char** col_names);
+void cleanup_data (void);
 static char* format_data (void);
 static void sigint_handler (int sig);
 
@@ -77,6 +78,7 @@ static void serve_json_data (struct mg_connection* connection, struct http_messa
         data_len, json_buff);
 
         json_free_serialized_string (json_buff);
+        cleanup_data ();
     } else {
         mg_http_send_error (connection, 500, NULL);
     }
@@ -181,6 +183,21 @@ int db_callback_content (void* data, int argc, char** argv, char** col_names) {
     return status;
 }
 
+void cleanup_data (void) {
+    for (int table_idx = 0;
+         (table_idx < MAX_TABLE_COUNT) && (db_tables[table_idx].name != NULL); ++table_idx) {
+        struct db_data_node* data_node = db_tables[table_idx].first_data_node;
+        while (data_node != NULL) {
+            struct db_data_node* next_data_node = data_node->next;
+            free (data_node->time_stamp);
+            free (data_node->temp);
+            free (data_node);
+            data_node = next_data_node;
+        }
+        free (db_tables[table_idx].name);
+    }
+}
+
 // json functions
 static char* format_data (void) {
     JSON_Value* root_value = json_value_init_object ();
@@ -191,31 +208,25 @@ static char* format_data (void) {
 
         struct db_data_node* data_node = db_tables[table_idx].first_data_node;
         while (data_node != NULL) {
-            // json_array_append_value (array, json_value_init_number
-            // (double
+            // json_array_append_value (array, json_value_init_number (double
             // number));
-
-
-            //        json_object_set_string (root_object, "name", "John
-            //        Smith");
+            // json_object_set_string (root_object, "name", "John Smith");
             // json_object_set_number (root_object, "age", 25);
+
             printf ("%s: %s\n", data_node->time_stamp, data_node->temp);
 
-            // set up next pass
-            struct db_data_node* next_data_node = data_node->next;
-            free (data_node->time_stamp);
-            free (data_node->temp);
-            free (data_node);
-            data_node = next_data_node;
+            data_node = data_node->next;
         }
-        free (db_tables[table_idx].name);
     }
 
     serialized_string = json_serialize_to_string (root_value);
-
-    json_value_free (root_value);
     printf ("%s\n", serialized_string);
-    return serialized_string; // json_buff;
+
+    // free internal json structures
+    json_value_free (root_value);
+
+    // return json string
+    return serialized_string;
 }
 
 // MAIN functions
