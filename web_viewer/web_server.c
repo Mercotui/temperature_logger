@@ -229,7 +229,6 @@ static char* format_data (void) {
 
     serialized_string = json_serialize_to_string (root_value);
 
-    printf ("%s\n", serialized_string);
     // free internal json structures
     json_value_free (root_value);
 
