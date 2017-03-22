@@ -214,27 +214,22 @@ static char* format_data (void) {
 
     for (int table_idx = 0;
          (table_idx < MAX_TABLE_COUNT) && (db_tables[table_idx].name != NULL); ++table_idx) {
-        JSON_Value* json_data_array_value = json_value_init_array ();
-        JSON_Array* json_data_array = json_value_get_array (json_data_array_value);
+        JSON_Value* json_data_list_value = json_value_init_object ();
+        JSON_Object* json_data_list = json_value_get_object (json_data_list_value);
         struct db_data_node* data_node = db_tables[table_idx].first_data_node;
 
         while (data_node != NULL) {
-            JSON_Value* json_data_node_value = json_value_init_object ();
-            JSON_Object* json_data_node = json_value_get_object (json_data_node_value);
-
             json_object_set_number (
-            json_data_node, data_node->time_stamp, data_node->temp);
-
-            json_array_append_value (json_data_array, json_data_node_value);
+            json_data_list, data_node->time_stamp, data_node->temp);
 
             data_node = data_node->next;
         }
-
-        json_object_set_value (root_object, db_tables[table_idx].name, json_data_array_value);
+        json_object_set_value (root_object, db_tables[table_idx].name, json_data_list_value);
     }
 
     serialized_string = json_serialize_to_string (root_value);
 
+    printf ("%s\n", serialized_string);
     // free internal json structures
     json_value_free (root_value);
 
