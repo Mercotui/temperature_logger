@@ -42,25 +42,7 @@ function init_chart(){
     }
     });
 
-    setInterval(function() {
-        requestAnimationFrame(chart_add);
-      }, speed);
-}
-
-function chart_add(){
-    var d = new Date();
-    var label = d.getSeconds();
-    labels.push(label);
-    labels.shift();
-
-    value = Math.random() * 50;
-    values.push(value);
-    values.shift();
-
-    value = Math.random() * 50;
-    values2.push(value);
-    values2.shift();
-    temperature_chart.update();
+    setInterval(load_data(), speed);
 }
 
 function load_data(){
@@ -100,17 +82,36 @@ function load_data(){
     http_request.send();
 }
 
-function parse_data(jsonObj){
-    dataPoints1.push({
-        x: time.getTime(),
-        y: yValue1
-    });
-    dataPoints2.push({
-        x: time.getTime(),
-        y: yValue2
-    });
+function parse_data(root){
+    for (var table_name in root) {
+        if (root.hasOwnProperty(table_name)) {
+            var table = root[table_name];
+            for (var timestamp_str in table) {
+                var temperature = table[timestamp_str];
+                var timestamp = new Date(timestamp_str);
 
-    chart.render();
+                
+            }
+        }
+    }
+
+    requestAnimationFrame(chart_data);
+}
+
+function chart_data(){
+    var d = new Date();
+    var label = d.getSeconds();
+    labels.push(label);
+    labels.shift();
+
+    value = Math.random() * 50;
+    values.push(value);
+    values.shift();
+
+    value = Math.random() * 50;
+    values2.push(value);
+    values2.shift();
+    temperature_chart.update();
 }
 
 init_chart();
