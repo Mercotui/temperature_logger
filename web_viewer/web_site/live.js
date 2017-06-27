@@ -104,6 +104,7 @@ function insert_data (time_slots, timestamp, temperature) {
 
 function chart_data (time_slots) {
     values.length = time_slots.length;
+    values.fill (0);
 
     for (var idx = time_slots.length - 1; idx >= 0; idx--) {
         if (time_slots[idx].length == 0) {
